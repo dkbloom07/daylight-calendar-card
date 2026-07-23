@@ -430,7 +430,7 @@ export class SkylightCalendarCardEditor extends HTMLElement {
     return `
       <div class="preset-editor">
         ${displayPresets.map((preset, index) => {
-          const normalized = normalizePickerHexColor(preset, DEFAULT_COLOR_PICKER_PRESETS[index % DEFAULT_COLOR_PICKER_PRESETS.length]);
+          const normalized = normalizePickerHexColor(preset, '#ffffff');
           return `
             <div class="preset-row">
               <input
