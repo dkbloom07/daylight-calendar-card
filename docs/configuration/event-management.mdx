@@ -107,6 +107,22 @@ A custom color set from the modal overrides the `background_color` (also known a
 
 ## Configuration Options
 
+<ParamField path="color_picker_presets" type="list">
+  A list of hex colors used as preset swatches in the custom event color picker. If omitted or all values are invalid, the card falls back to the default palette.
+
+  ```yaml
+  color_picker_presets:
+    - "#ffffff"
+    - "#ff0000"
+    - "#ffff00"
+    - "#00ff00"
+    - "#000000"
+    - "#00ffff"
+    - "#0000ff"
+    - "#ff00ff"
+  ```
+</ParamField>
+
 <ParamField path="enable_event_management" default="true" type="boolean">
   Master switch for all event management features. Set to `false` to make the card completely read-only — the Add Event button is hidden and clicking events opens a read-only detail view with no Edit or Delete actions.
 </ParamField>

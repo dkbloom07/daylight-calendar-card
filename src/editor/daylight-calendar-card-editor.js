@@ -42,6 +42,7 @@ import { clearAllEventCacheSnapshots } from '../events/event-cache.js';
 import { normalizeDashboardPath, normalizeEnumValue } from '../utils/normalization-utils.js';
 import { detectStaleSkylightResource, STALE_RESOURCE_TROUBLESHOOTING_URL } from '../utils/stale-resource-utils.js';
 import '../components/daylight-color-picker.js';
+import { DEFAULT_COLOR_PICKER_PRESETS, normalizePickerHexColor } from '../components/daylight-color-picker.js';
 
 function normalizeDefaultDarkMode(value) {
   if (value === true) return 'dark';
@@ -381,6 +382,84 @@ export class SkylightCalendarCardEditor extends HTMLElement {
     return fallback;
   }
 
+  normalizeColorPickerPresetList(values) {
+    if (!Array.isArray(values)) return [];
+    return values.map((value) => normalizePickerHexColor(value)).filter(Boolean);
+  }
+
+  getColorPickerPresetValues() {
+    const values = this.getListFieldValue('color_picker_presets');
+    return Array.isArray(values) ? values : [];
+  }
+
+  addColorPickerPreset() {
+    const nextConfig = { ...this.value };
+    const current = this.getColorPickerPresetValues();
+    if (current.length === 0) {
+      nextConfig.color_picker_presets = [...DEFAULT_COLOR_PICKER_PRESETS];
+    } else {
+      current.push('#ffffff');
+      nextConfig.color_picker_presets = current;
+    }
+    this.emitConfigChanged(nextConfig);
+    this.render();
+  }
+
+  updateColorPickerPreset(index, value) {
+    const nextConfig = { ...this.value };
+    const current = [...this.getColorPickerPresetValues()];
+    current[index] = value;
+    nextConfig.color_picker_presets = current;
+    this.emitConfigChanged(nextConfig);
+  }
+
+  removeColorPickerPreset(index) {
+    const nextConfig = { ...this.value };
+    const current = [...this.getColorPickerPresetValues()];
+    current.splice(index, 1);
+    nextConfig.color_picker_presets = this.normalizeColorPickerPresetList(current);
+    this.emitConfigChanged(nextConfig);
+    this.render();
+  }
+
+  renderColorPickerPresetEditor() {
+    const presets = this.getColorPickerPresetValues();
+    const isUsingDefaults = presets.length === 0;
+    const displayPresets = isUsingDefaults ? DEFAULT_COLOR_PICKER_PRESETS : presets;
+
+    return `
+      <div class="preset-editor">
+        ${displayPresets.map((preset, index) => {
+          const normalized = normalizePickerHexColor(preset, DEFAULT_COLOR_PICKER_PRESETS[index % DEFAULT_COLOR_PICKER_PRESETS.length]);
+          return `
+            <div class="preset-row">
+              <input
+                type="color"
+                class="preset-swatch"
+                data-color-preset-index="${index}"
+                value="${normalized}"
+                ${isUsingDefaults ? 'disabled' : ''}
+              />
+              <input
+                type="text"
+                class="preset-hex"
+                data-color-preset-text-index="${index}"
+                value="${this.escapeHtml(isUsingDefaults ? normalized : preset)}"
+                placeholder="#RRGGBB"
+                ${isUsingDefaults ? 'disabled' : ''}
+              />
+              ${isUsingDefaults ? '' : `<button type="button" class="preset-remove" data-color-preset-remove="${index}" aria-label="Remove preset">✕</button>`}
+            </div>
+          `;
+        }).join('')}
+        <button type="button" class="secondary-action" data-color-preset-add>${isUsingDefaults ? 'Customize presets' : 'Add preset'}</button>
+        ${isUsingDefaults
+          ? '<p class="helper">Using the default palette. Click \'Customize presets\' to define your own.</p>'
+          : '<p class="helper">These swatches appear in the event color picker. Invalid values are ignored.</p>'}
+      </div>
+    `;
+  }
+
   getColorValue(field, mapKey = null) {
     if (field === 'virtual_calendar_color') {
       return this.getEditorVirtualCalendarColor(Number(mapKey));
@@ -408,6 +487,7 @@ export class SkylightCalendarCardEditor extends HTMLElement {
     const dialog = this.querySelector('.color-picker-dialog');
     const picker = this.querySelector('daylight-color-picker');
     if (picker) picker.value = initialColor;
+    if (picker) picker.presets = this.normalizeColorPickerPresetList(this._config.color_picker_presets || []);
     if (dialog) dialog.classList.add('show');
   }
 
@@ -872,6 +952,10 @@ export class SkylightCalendarCardEditor extends HTMLElement {
           ${this.renderColorInputControl({ id: 'header_text_color', field: 'header_text_color', value: this._config.header_text_color })}
           <input data-field="header_text_color_text" data-type="header-text-color-text" type="text" value="${this.escapeHtml(this._config.header_text_color || '')}" placeholder="Auto contrast">
         </div>
+      </div>
+      <div class="field">
+        <label>Color picker presets</label>
+        ${this.renderColorPickerPresetEditor()}
       </div>
       ${this.renderSubSection('Calendar colors', `<div class="map-grid">${this.renderMapRowInputs('colors', { label: 'calendar colors', inputType: 'color' })}</div>`)}
       ${this.renderSubSection('Event font colors', `<div class="map-grid">${this.renderMapRowInputs('event_font_colors', { label: 'event font colors', inputType: 'color' })}</div>`)}
@@ -1463,6 +1547,48 @@ export class SkylightCalendarCardEditor extends HTMLElement {
           color: var(--secondary-text-color);
           font-size: 0.85rem;
         }
+
+        .preset-editor {
+          display: grid;
+          gap: 8px;
+        }
+
+        .preset-row {
+          display: grid;
+          grid-template-columns: 38px 1fr auto;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .preset-swatch {
+          width: 38px;
+          height: 38px;
+          padding: 2px;
+          border: 1px solid var(--divider-color);
+          border-radius: 6px;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .preset-swatch:disabled {
+          opacity: 0.5;
+          cursor: default;
+        }
+
+        .preset-hex {
+          font-family: monospace;
+        }
+
+        .preset-remove {
+          border: 1px solid var(--divider-color);
+          background: var(--card-background-color);
+          border-radius: 6px;
+          padding: 6px 10px;
+          cursor: pointer;
+          color: var(--primary-text-color);
+          font: inherit;
+          line-height: 1;
+        }
       </style>
       <div class="card-config">
         <div class="field field-inline">
@@ -1534,6 +1660,28 @@ export class SkylightCalendarCardEditor extends HTMLElement {
 
     this.querySelectorAll('[data-color-trigger]').forEach((trigger) => {
       trigger.addEventListener('click', () => this.openColorPicker(trigger.dataset.colorField, trigger.dataset.colorMapKey || null));
+    });
+
+    this.querySelectorAll('[data-color-preset-add]').forEach((button) => {
+      button.addEventListener('click', () => this.addColorPickerPreset());
+    });
+
+    this.querySelectorAll('[data-color-preset-remove]').forEach((button) => {
+      button.addEventListener('click', (event) => this.removeColorPickerPreset(Number(event.currentTarget.dataset.colorPresetRemove)));
+    });
+
+    this.querySelectorAll('[data-color-preset-index]').forEach((input) => {
+      input.addEventListener('input', (event) => {
+        const index = Number(event.currentTarget.dataset.colorPresetIndex);
+        this.updateColorPickerPreset(index, event.currentTarget.value);
+      });
+    });
+
+    this.querySelectorAll('[data-color-preset-text-index]').forEach((input) => {
+      input.addEventListener('input', (event) => {
+        const index = Number(event.currentTarget.dataset.colorPresetTextIndex);
+        this.updateColorPickerPreset(index, event.currentTarget.value);
+      });
     });
 
     const picker = this.querySelector('daylight-color-picker');
