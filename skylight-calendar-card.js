@@ -77,6 +77,7 @@ const DEFAULT_CONFIG_VALUES = {
   firstDayOfWeek: 0,
   calendar_names: {},
   calendar_badge_icons: {},
+  color_picker_presets: [],
   week_days: DEFAULT_WEEK_DAYS,
   rolling_days_week_compact: null,
   rolling_days_schedule: null,
@@ -134,6 +135,7 @@ const DEFAULT_STUB_CONFIG = {
   title: 'Family Calendar',
   entities: ['calendar.personal'],
   default_view: 'month',
+  color_picker_presets: [],
   first_day_of_week: 0,
   week_days: [0, 1, 2, 3, 4, 5, 6],
   week_start_hour: 0,
@@ -192,6 +194,7 @@ const createDefaultStubConfig = () => ({
   entities: [...DEFAULT_STUB_CONFIG.entities],
   week_days: [...DEFAULT_STUB_CONFIG.week_days],
   day_badges: [...DEFAULT_STUB_CONFIG.day_badges],
+  color_picker_presets: [...DEFAULT_STUB_CONFIG.color_picker_presets],
   calendar_person_entities: { ...DEFAULT_STUB_CONFIG.calendar_person_entities },
   default_hidden_calendars: [...DEFAULT_STUB_CONFIG.default_hidden_calendars],
   header_items: [...DEFAULT_STUB_CONFIG.header_items]
@@ -467,6 +470,7 @@ function createConfigNormalizationSchema({
       { key: 'event_color_mode', defaultValue: ({ rawConfig }) => normalizeEventColorMode(rawConfig.event_color_mode ?? DEFAULT_EVENT_COLOR_MODE), normalize: ({ rawConfig }) => normalizeEventColorMode(rawConfig.event_color_mode ?? DEFAULT_EVENT_COLOR_MODE) },
       { key: 'event_neutral_background', defaultValue: ({ rawConfig }) => normalizeSingleColor(rawConfig.event_neutral_background) || DEFAULT_EVENT_NEUTRAL_BACKGROUND, normalize: ({ rawConfig }) => normalizeSingleColor(rawConfig.event_neutral_background) || DEFAULT_EVENT_NEUTRAL_BACKGROUND },
       { key: 'event_tint_opacity', defaultValue: ({ rawConfig }) => normalizeBackgroundOpacity(rawConfig.event_tint_opacity, DEFAULT_EVENT_TINT_OPACITY), normalize: ({ rawConfig }) => normalizeBackgroundOpacity(rawConfig.event_tint_opacity, DEFAULT_EVENT_TINT_OPACITY) },
+      { key: 'color_picker_presets', defaultValue: ({ rawConfig }) => Array.isArray(rawConfig.color_picker_presets) ? rawConfig.color_picker_presets : [...DEFAULT_CONFIG_VALUES.color_picker_presets], normalize: ({ rawConfig }) => Array.isArray(rawConfig.color_picker_presets) ? rawConfig.color_picker_presets : [...DEFAULT_CONFIG_VALUES.color_picker_presets] },
       { key: 'enable_event_management', defaultValue: ({ rawConfig }) => rawConfig.enable_event_management === false ? false : DEFAULT_CONFIG_VALUES.enable_event_management },
       { key: 'event_modal_size', defaultValue: ({ rawConfig }) => normalizeEventModalSize(rawConfig.event_modal_size), normalize: ({ rawConfig }) => normalizeEventModalSize(rawConfig.event_modal_size) },
       { key: 'readonly_calendars', defaultValue: ({ rawConfig }) => rawConfig.readonly_calendars || [...DEFAULT_CONFIG_VALUES.readonly_calendars] },
@@ -1223,6 +1227,12 @@ function normalizePickerHexColor(value, fallback = null) {
   return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash.toLowerCase() : fallback;
 }
 
+function normalizeColorPickerPresets(values) {
+  if (!Array.isArray(values)) return DEFAULT_COLOR_PICKER_PRESETS;
+  const normalized = values.map((color) => normalizePickerHexColor(color)).filter(Boolean);
+  return normalized.length ? normalized : DEFAULT_COLOR_PICKER_PRESETS;
+}
+
 function hexToHsv(hex) {
   const normalizedHex = normalizePickerHexColor(hex, '#3f51b5').replace('#', '');
   const r = parseInt(normalizedHex.slice(0, 2), 16) / 255;
@@ -1279,7 +1289,7 @@ class DaylightColorPicker extends HTMLElement {
   get value() { return this._value; }
   set value(nextValue) { const normalized = normalizePickerHexColor(nextValue, this._value || '#3f51b5'); const hsv = hexToHsv(normalized); this._value = normalized; this._h = hsv.h; this._s = hsv.s; this._v = hsv.v; this.syncUi(); }
   get presets() { return this._presets; }
-  set presets(values) { this._presets = Array.isArray(values) && values.length ? values.map((color) => normalizePickerHexColor(color)).filter(Boolean) : DEFAULT_COLOR_PICKER_PRESETS; if (this.isConnected) this.render(); }
+  set presets(values) { this._presets = normalizeColorPickerPresets(values); if (this.isConnected) this.render(); }
   get showActions() { return this.getAttribute('show-actions') !== 'false'; }
   setColorFromHsv(h, s, v, { emit = true } = {}) { this._h = h; this._s = Math.max(0, Math.min(1, s)); this._v = Math.max(0.05, Math.min(1, v)); this._value = hsvToHex(this._h, this._s, this._v); this.syncUi(); if (emit) this.emitColorChange(); }
   setColorFromHex(value, { emit = true } = {}) { const normalized = normalizePickerHexColor(value); if (!normalized) return false; const hsv = hexToHsv(normalized); this._value = normalized; this._h = hsv.h; this._s = hsv.s; this._v = hsv.v; this.syncUi(); if (emit) this.emitColorChange(); return true; }
@@ -1657,6 +1667,84 @@ class SkylightCalendarCardEditor extends HTMLElement {
     return fallback;
   }
 
+  normalizeColorPickerPresetList(values) {
+    if (!Array.isArray(values)) return [];
+    return values.map((value) => normalizePickerHexColor(value)).filter(Boolean);
+  }
+
+  getColorPickerPresetValues() {
+    const values = this.getListFieldValue('color_picker_presets');
+    return Array.isArray(values) ? values : [];
+  }
+
+  addColorPickerPreset() {
+    const nextConfig = { ...this.value };
+    const current = this.getColorPickerPresetValues();
+    if (current.length === 0) {
+      nextConfig.color_picker_presets = [...DEFAULT_COLOR_PICKER_PRESETS];
+    } else {
+      current.push('#ffffff');
+      nextConfig.color_picker_presets = current;
+    }
+    this.emitConfigChanged(nextConfig);
+    this.render();
+  }
+
+  updateColorPickerPreset(index, value) {
+    const nextConfig = { ...this.value };
+    const current = [...this.getColorPickerPresetValues()];
+    current[index] = value;
+    nextConfig.color_picker_presets = current;
+    this.emitConfigChanged(nextConfig);
+  }
+
+  removeColorPickerPreset(index) {
+    const nextConfig = { ...this.value };
+    const current = [...this.getColorPickerPresetValues()];
+    current.splice(index, 1);
+    nextConfig.color_picker_presets = this.normalizeColorPickerPresetList(current);
+    this.emitConfigChanged(nextConfig);
+    this.render();
+  }
+
+  renderColorPickerPresetEditor() {
+    const presets = this.getColorPickerPresetValues();
+    const isUsingDefaults = presets.length === 0;
+    const displayPresets = isUsingDefaults ? DEFAULT_COLOR_PICKER_PRESETS : presets;
+
+    return `
+      <div class="preset-editor">
+        ${displayPresets.map((preset, index) => {
+          const normalized = normalizePickerHexColor(preset, '#ffffff');
+          return `
+            <div class="preset-row">
+              <input
+                type="color"
+                class="preset-swatch"
+                data-color-preset-index="${index}"
+                value="${normalized}"
+                ${isUsingDefaults ? 'disabled' : ''}
+              />
+              <input
+                type="text"
+                class="preset-hex"
+                data-color-preset-text-index="${index}"
+                value="${this.escapeHtml(isUsingDefaults ? normalized : preset)}"
+                placeholder="#RRGGBB"
+                ${isUsingDefaults ? 'disabled' : ''}
+              />
+              ${isUsingDefaults ? '' : `<button type="button" class="preset-remove" data-color-preset-remove="${index}" aria-label="Remove preset">✕</button>`}
+            </div>
+          `;
+        }).join('')}
+        <button type="button" class="secondary-action" data-color-preset-add>${isUsingDefaults ? 'Customize presets' : 'Add preset'}</button>
+        ${isUsingDefaults
+          ? '<p class="helper">Using the default palette. Click \'Customize presets\' to define your own.</p>'
+          : '<p class="helper">These swatches appear in the event color picker. Invalid values are ignored.</p>'}
+      </div>
+    `;
+  }
+
   getColorValue(field, mapKey = null) {
     if (field === 'virtual_calendar_color') {
       return this.getEditorVirtualCalendarColor(Number(mapKey));
@@ -1684,6 +1772,7 @@ class SkylightCalendarCardEditor extends HTMLElement {
     const dialog = this.querySelector('.color-picker-dialog');
     const picker = this.querySelector('daylight-color-picker');
     if (picker) picker.value = initialColor;
+    if (picker) picker.presets = this.normalizeColorPickerPresetList(this._config.color_picker_presets || []);
     if (dialog) dialog.classList.add('show');
   }
 
@@ -2148,6 +2237,10 @@ class SkylightCalendarCardEditor extends HTMLElement {
           ${this.renderColorInputControl({ id: 'header_text_color', field: 'header_text_color', value: this._config.header_text_color })}
           <input data-field="header_text_color_text" data-type="header-text-color-text" type="text" value="${this.escapeHtml(this._config.header_text_color || '')}" placeholder="Auto contrast">
         </div>
+      </div>
+      <div class="field">
+        <label>Color picker presets</label>
+        ${this.renderColorPickerPresetEditor()}
       </div>
       ${this.renderSubSection('Calendar colors', `<div class="map-grid">${this.renderMapRowInputs('colors', { label: 'calendar colors', inputType: 'color' })}</div>`)}
       ${this.renderSubSection('Event font colors', `<div class="map-grid">${this.renderMapRowInputs('event_font_colors', { label: 'event font colors', inputType: 'color' })}</div>`)}
@@ -2739,6 +2832,48 @@ class SkylightCalendarCardEditor extends HTMLElement {
           color: var(--secondary-text-color);
           font-size: 0.85rem;
         }
+
+        .preset-editor {
+          display: grid;
+          gap: 8px;
+        }
+
+        .preset-row {
+          display: grid;
+          grid-template-columns: 38px 1fr auto;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .preset-swatch {
+          width: 38px;
+          height: 38px;
+          padding: 2px;
+          border: 1px solid var(--divider-color);
+          border-radius: 6px;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .preset-swatch:disabled {
+          opacity: 0.5;
+          cursor: default;
+        }
+
+        .preset-hex {
+          font-family: monospace;
+        }
+
+        .preset-remove {
+          border: 1px solid var(--divider-color);
+          background: var(--card-background-color);
+          border-radius: 6px;
+          padding: 6px 10px;
+          cursor: pointer;
+          color: var(--primary-text-color);
+          font: inherit;
+          line-height: 1;
+        }
       </style>
       <div class="card-config">
         <div class="field field-inline">
@@ -2810,6 +2945,28 @@ class SkylightCalendarCardEditor extends HTMLElement {
 
     this.querySelectorAll('[data-color-trigger]').forEach((trigger) => {
       trigger.addEventListener('click', () => this.openColorPicker(trigger.dataset.colorField, trigger.dataset.colorMapKey || null));
+    });
+
+    this.querySelectorAll('[data-color-preset-add]').forEach((button) => {
+      button.addEventListener('click', () => this.addColorPickerPreset());
+    });
+
+    this.querySelectorAll('[data-color-preset-remove]').forEach((button) => {
+      button.addEventListener('click', (event) => this.removeColorPickerPreset(Number(event.currentTarget.dataset.colorPresetRemove)));
+    });
+
+    this.querySelectorAll('[data-color-preset-index]').forEach((input) => {
+      input.addEventListener('input', (event) => {
+        const index = Number(event.currentTarget.dataset.colorPresetIndex);
+        this.updateColorPickerPreset(index, event.currentTarget.value);
+      });
+    });
+
+    this.querySelectorAll('[data-color-preset-text-index]').forEach((input) => {
+      input.addEventListener('input', (event) => {
+        const index = Number(event.currentTarget.dataset.colorPresetTextIndex);
+        this.updateColorPickerPreset(index, event.currentTarget.value);
+      });
     });
 
     const picker = this.querySelector('daylight-color-picker');
