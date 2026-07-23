@@ -1213,7 +1213,7 @@ const detectStaleSkylightResource = (documentLike = globalThis.document) => {
   };
 };
 
-const DEFAULT_COLOR_PICKER_PRESETS = ['#ffffff', '#ff0000', '#ffff00', '#00ff00', '#000000', '#00ffff', '#0000ff', '#ff00ff'];
+const DEFAULT_COLOR_PICKER_PRESETS = ['#ffffff', '#ff0000', '#00ff44', '#000000', '#00ffff', '#0000ff', '#ff7300'];
 
 function normalizePickerHexColor(value, fallback = null) {
   const raw = String(value || '').trim();
