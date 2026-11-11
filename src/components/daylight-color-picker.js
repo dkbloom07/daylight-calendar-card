@@ -1,4 +1,4 @@
-export const DEFAULT_COLOR_PICKER_PRESETS = ['#ffffff', '#ff0000', '#ffff00', '#00ff00', '#000000', '#00ffff', '#0000ff', '#ff00ff'];
+export const DEFAULT_COLOR_PICKER_PRESETS = ['#ff7300', '#0000ff', '#ff0000', '#00ff00', '#00ffff', '#ffff00', '#ffffff', '#000000'];
 
 export function normalizePickerHexColor(value, fallback = null) {
   const raw = String(value || '').trim();
@@ -10,6 +10,12 @@ export function normalizePickerHexColor(value, fallback = null) {
     return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
   }
   return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash.toLowerCase() : fallback;
+}
+
+export function normalizeColorPickerPresets(values) {
+  if (!Array.isArray(values)) return DEFAULT_COLOR_PICKER_PRESETS;
+  const normalized = values.map((color) => normalizePickerHexColor(color)).filter(Boolean);
+  return normalized.length ? normalized : DEFAULT_COLOR_PICKER_PRESETS;
 }
 
 export function hexToHsv(hex) {
@@ -68,7 +74,7 @@ export class DaylightColorPicker extends HTMLElement {
   get value() { return this._value; }
   set value(nextValue) { const normalized = normalizePickerHexColor(nextValue, this._value || '#3f51b5'); const hsv = hexToHsv(normalized); this._value = normalized; this._h = hsv.h; this._s = hsv.s; this._v = hsv.v; this.syncUi(); }
   get presets() { return this._presets; }
-  set presets(values) { this._presets = Array.isArray(values) && values.length ? values.map((color) => normalizePickerHexColor(color)).filter(Boolean) : DEFAULT_COLOR_PICKER_PRESETS; if (this.isConnected) this.render(); }
+  set presets(values) { this._presets = normalizeColorPickerPresets(values); if (this.isConnected) this.render(); }
   get showActions() { return this.getAttribute('show-actions') !== 'false'; }
   setColorFromHsv(h, s, v, { emit = true } = {}) { this._h = h; this._s = Math.max(0, Math.min(1, s)); this._v = Math.max(0.05, Math.min(1, v)); this._value = hsvToHex(this._h, this._s, this._v); this.syncUi(); if (emit) this.emitColorChange(); }
   setColorFromHex(value, { emit = true } = {}) { const normalized = normalizePickerHexColor(value); if (!normalized) return false; const hsv = hexToHsv(normalized); this._value = normalized; this._h = hsv.h; this._s = hsv.s; this._v = hsv.v; this.syncUi(); if (emit) this.emitColorChange(); return true; }

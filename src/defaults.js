@@ -44,6 +44,7 @@ export const DEFAULT_CONFIG_VALUES = {
   firstDayOfWeek: 0,
   calendar_names: {},
   calendar_badge_icons: {},
+  color_picker_presets: [],
   week_days: DEFAULT_WEEK_DAYS,
   rolling_days_week_compact: null,
   rolling_days_schedule: null,
@@ -101,6 +102,7 @@ export const DEFAULT_STUB_CONFIG = {
   title: 'Family Calendar',
   entities: ['calendar.personal'],
   default_view: 'month',
+  color_picker_presets: [],
   first_day_of_week: 0,
   week_days: [0, 1, 2, 3, 4, 5, 6],
   week_start_hour: 0,
@@ -159,6 +161,7 @@ export const createDefaultStubConfig = () => ({
   entities: [...DEFAULT_STUB_CONFIG.entities],
   week_days: [...DEFAULT_STUB_CONFIG.week_days],
   day_badges: [...DEFAULT_STUB_CONFIG.day_badges],
+  color_picker_presets: [...DEFAULT_STUB_CONFIG.color_picker_presets],
   calendar_person_entities: { ...DEFAULT_STUB_CONFIG.calendar_person_entities },
   default_hidden_calendars: [...DEFAULT_STUB_CONFIG.default_hidden_calendars],
   header_items: [...DEFAULT_STUB_CONFIG.header_items]
