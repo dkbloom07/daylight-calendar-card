@@ -1,4 +1,4 @@
-export const DEFAULT_COLOR_PICKER_PRESETS = ['#ffffff', '#ff0000', '#00ff44', '#000000', '#00ffff', '#0000ff', '#ff7300', '#fafe0b'];
+export const DEFAULT_COLOR_PICKER_PRESETS = ['#ff7300', '#0000ff', '#ff0000', '#00ff00', '#00ffff', '#ffff00', '#ffffff', '#000000'];
 
 export function normalizePickerHexColor(value, fallback = null) {
   const raw = String(value || '').trim();
