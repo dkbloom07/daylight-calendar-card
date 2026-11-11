@@ -18018,6 +18018,7 @@ class SkylightCalendarCard extends HTMLElement {
     modal.classList.add('show');
     const close = () => this.showEventModal(returnEvent, onCloseBack, { onSaved });
     const picker = this.getRootElementById('custom-color-wheel');
+	if (picker && Array.isArray(this._config?.color_picker_presets) && this._config.color_picker_presets.length) picker.presets = this._config.color_picker_presets;
     picker?.addEventListener('color-change', (event) => { selectedColor = event.detail.color; });
     this.getRootElementById('close-custom-color-modal')?.addEventListener('click', close);
     this.getRootElementById('cancel-custom-color-btn')?.addEventListener('click', close);
